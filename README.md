@@ -139,5 +139,7 @@ JSON
   "original_input": "REDACTED",
   "sanitized_input": "Here is the client contact: <EMAIL_REDACTED>, please analyze it."
 }
+
+
 👤 Author
-Abdou - DevSecOps & Cloud Security Engineer Passionate about securing AI infrastructures and Kubernetes environments.
+Abdou - DevSecOps & Cloud Security Engineer
