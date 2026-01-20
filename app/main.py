@@ -15,31 +15,37 @@ firewall = PromptFirewall()
 class PromptRequest(BaseModel):
     user_input: str
     metadata: dict | None = None
-
+    
 @app.get("/")
 def health_check():
     return {"status": "running", "service": "LLM Firewall"}
-
+    
 @app.post("/analyze")
 def analyze_prompt(request: PromptRequest):
     """
-    Analyse le prompt entrant via le Firewall.
-    Bloque la requête si une injection est détectée.
+    Analyse intelligente avec DLP et Anti-Obfuscation.
     """
-    # 1. Scan du prompt
+    # 1. Scan complet
     analysis = firewall.scan(request.user_input)
 
-    # 2. Prise de décision
-    if not analysis["is_safe"]:
-        # LOG DE SÉCURITÉ (Très important pour un Admin Sys !)
-        print(f"🚨 ALERT: Attaque bloquée ! Input: '{request.user_input}' - Raison: {analysis['reason']}")
-        
-        # Renvoit d'une erreur 403 (Forbidden)
+    # 2. Si c'est une attaque -> 403
+    if analysis["action"] == "BLOCK":
+        print(f"🚨 ALERT: Attaque bloquée ! IP: Client - Raison: {analysis['reason']}")
         raise HTTPException(status_code=403, detail=analysis["reason"])
 
-    # 3. Si c'est safe donc validation
+    # 3. Si c'est une fuite de données -> 200 mais avec le texte censuré
+    if analysis["action"] == "ANONYMIZE":
+        print(f"⚠️ WARNING: Données sensibles censurées. Type: {analysis['reason']}")
+        return {
+            "status": "modified",
+            "message": "Prompt validé mais nettoyé pour confidentialité.",
+            "original_input": "CENSURÉ", # Pas de renvoit de l'original par sécurité
+            "sanitized_input": analysis["sanitized_input"] # Le texte propre à envoyer au LLM
+        }
+
+    # 4. Tout est propre
     return {
         "status": "allowed",
-        "message": "Prompt validé et sécurisé.",
-        "original_input": request.user_input
+        "message": "Prompt validé.",
+        "sanitized_input": request.user_input
     }
