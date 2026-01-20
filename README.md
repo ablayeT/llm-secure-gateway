@@ -22,15 +22,15 @@ Addressing the critical risks identified by the **OWASP Top 10 for LLM** (Prompt
 
 ### 1. API Interface (Swagger UI)
 The gateway provides a fully documented OpenAPI interface.
-![Swagger Interface](screenshots/swagger_ui.png)
+![Swagger Interface](/screenshots/swagger_ui.png)
 
 ### 2. Attack Blocking (Security Engine)
 *Attempting to override system instructions results in an immediate 403 Forbidden.*
-![Blocked Attack](screenshots/attack_blocked.png)
+![Blocked Attack](/screenshots/attack_blocked.png.png)
 
 ### 3. Data Leakage Prevention (DLP)
 *Sensitive data (PII) is automatically redacted before reaching the LLM provider.*
-![DLP Redaction](screenshots/dlp_redaction.png)
+![DLP Redaction](/screenshots/dlp_redaction.png.png)
 
 ---
 
