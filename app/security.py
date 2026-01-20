@@ -29,7 +29,7 @@ class PromptFirewall:
         try:
             # Nettoyage du texte pour voir s'il ressemble à du B64
             # Note : mplémentation basique pour l'exemple
-            if len(text) > 20 and "=" in text: 
+            if len(text) > 10 and "=" in text: 
                 decoded_bytes = base64.b64decode(text, validate=True)
                 return decoded_bytes.decode('utf-8')
         except (binascii.Error, UnicodeDecodeError):
