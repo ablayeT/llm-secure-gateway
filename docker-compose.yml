@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  llm-firewall:
+    build: .
+    container_name: secure-ai-gateway
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app/app  # Permet de modifier le code sans reconstruire l'image (Hot Reload)
+    environment:
+      - ENVIRONMENT=production
+    restart: always
