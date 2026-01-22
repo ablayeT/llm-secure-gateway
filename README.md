@@ -141,7 +141,49 @@ JSON
 }
 
 
+
+🚀 V2.0 UPDATE: Frontend UI & SOC DashboardThis project has been upgraded to a Full-Stack Solution. It now includes a user-friendly Chat Interface and a Security Operations Center (SOC) Dashboard.🌟 New Features in v2.0💬 Secure Chat UI: A modern interface (Streamlit) for employees to interact with the LLM.🧠 Real AI Integration: The backend is now connected to Meta Llama 3 via OpenRouter API.📊 SOC Dashboard: Real-time monitoring of blocked attacks, DLP censorship stats, and audit logs.🔐 RBAC: Role-Based Access Control (User vs Admin).🖥️ Frontend Installation (Streamlit)While the backend runs in Docker, the frontend runs locally on the host machine to simulate a client application.
+
+1. Create the Virtual Environment
+
+Bash
+python3 -m venv venv
+
+source venv/bin/activate
+# On Windows: venv\Scripts\activate
+
+2. Install Frontend Dependencies
+Bash
+pip install streamlit requests pandas matplotlib
+
+3. Configure Logs for Dashboard Ensure the audit log file exists on the host so Docker can write to it and Streamlit can read it (Volume Mapping).
+
+Bash
+
+touch security_audit.log
+
+chmod 666 security_audit.log
+
+4. Launch the Interface
+
+Bash
+streamlit run frontend.py
+
+👤 Demo CredentialsThe system simulates an enterprise authentication provider:
+Role Username Password AccessRights  
+Admin : Full Access: Chat + SOC Dashboard (Logs & Stats)
+Employee(user) : Restricted: Secure Chat Only 
+
+V2.0 Screenshots: 
+
+The SOC Dashboard (Admin View)Visualizes real-time threats and DLP activity.(Add screenshot of your dashboard here)
+![SOC dashboard - Admin view](/screenshots/admin_dashboard.png)
+
+The Secure Chat (Employee View)Shows the "Shield" avatar and DLP alerts when data is redacted.(Add screenshot of your chat here)
+![Employee secure chat](/screenshots/user_dashboad.png)
+
 SEE ALSO NEXT PROJECT : LLM-RED-TEAMING 
+
 
 👤 AUTHOR : 
 Abdou - DevSecOps & Cloud Security Engineer

@@ -1,13 +1,17 @@
-version: '3.8'
-
 services:
   llm-firewall:
     build: .
     container_name: secure-ai-gateway
     ports:
       - "8000:8000"
+    # Clé API depuis le fichier .env
+    env_file:
+      - .env
+    # IMPORTANT : Hot Reload (les modifs sur le PC sont vues par Docker)
     volumes:
-      - ./app:/app/app  # Permet de modifier le code sans reconstruire l'image (Hot Reload)
+      - ./app:/app/app
+      # [Fichier sur mon PC] : [Fichier dans le conteneur]
+      - ./security_audit.log:/app/security_audit.log
     environment:
       - ENVIRONMENT=production
     restart: always

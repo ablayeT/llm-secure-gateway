@@ -2,77 +2,97 @@ import re
 import base64
 import binascii
 
-class PromptFirewall:
-    def __init__(self):
-        # 1. Signatures d'attaques (Blacklist)
-        self.attack_patterns = [
-            r"ignore previous instructions",
-            r"system override",
-            r"pwned",
-            r"drop table",
-            r"rm -rf",
-            r"cat /etc/passwd"
-        ]
+# --- 1. CONFIGURATION DES MENACES (GLOBAL) ---
 
-        # 2. Signatures de données sensibles (DLP - Data Leakage Prevention)
-        self.sensitive_patterns = {
-            # Détection d'email simple
-            "EMAIL": r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+",
-            # Détection (simplifiée) de Carte Bancaire (16 chiffres)
-            "CREDIT_CARD": r"\b(?:\d[ -]*?){13,16}\b",
-            # Détection de Clés API (Ex: AWS)
-            "AWS_KEY": r"AKIA[0-9A-Z]{16}"
-        }
+# Liste noire des attaques (Injections de prompt)
+# --- MOTIFS D'ATTAQUES (Renforcés grâce au Pentest) ---
+INJECTION_PATTERNS = [
+    r"ignore previous instructions",
+    r"ignore constraints",     # <--- Patch pour la faille critique
+    r"system override",
+    r"pwned",
+    r"drop table",
+    r"select \* from",
+    r"rm -rf",
+    r"cat /etc/passwd",
+    r"/bin/bash",
+    r"do anything now",
+    r"dan mode",
+    r"<script>",
+    r"execute.*python",        # <--- Patch pour l'exécution de code
+    r"import os"               # <--- Patch pour l'import système
+]
 
-    def _decode_base64(self, text: str) -> str:
-        """Tente de décoder du Base64 caché pour voir ce qu'il y a derrière."""
-        try:
-            # Nettoyage du texte pour voir s'il ressemble à du B64
-            # Note : mplémentation basique pour l'exemple
-            if len(text) > 10 and "=" in text: 
-                decoded_bytes = base64.b64decode(text, validate=True)
-                return decoded_bytes.decode('utf-8')
-        except (binascii.Error, UnicodeDecodeError):
-            pass
-        return text
+# Modèles de données sensibles (DLP)
+PII_PATTERNS = {
+    "EMAIL": r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
+    "CREDIT_CARD": r"\b(?:\d[ -]*?){13,16}\b",
+    "AWS_KEY": r"AKIA[0-9A-Z]{16}",
+    "SSN": r"\b\d{3}-\d{2}-\d{4}\b"
+}
 
-    def scan(self, prompt: str) -> dict:
-        """
-        Analyse complète : Décodage -> Attaques -> Fuite de données
-        """
-        
-        # ÉTAPE 1 : Anti-Obfuscation
-        # Si le hacker essaie de cacher "rm -rf" en Base64, donc démasque le.
-        decoded_prompt = self._decode_base64(prompt)
-        
-        # Si le décodage a révélé un texte différent, donc logue l'info
-        check_target = decoded_prompt if decoded_prompt != prompt else prompt
+# --- 2. FONCTIONS UTILITAIRES ---
 
-        # ÉTAPE 2 : Détection d'Attaques (Injection)
-        for pattern in self.attack_patterns:
-            if re.search(pattern, check_target, re.IGNORECASE):
-                return {
-                    "is_safe": False,
-                    "action": "BLOCK",
-                    "reason": f"Attaque détectée (Signature: {pattern})"
-                }
+def _decode_base64(text: str) -> str:
+    """
+    Fonction intelligente qui tente de démasquer du texte caché en Base64.
+    Exemple : "cm0gLXJmIC8=" devient "rm -rf /"
+    """
+    try:
+        # Un peu de nettoyage pour éviter les faux positifs
+        clean_text = text.strip()
+        # Un texte Base64 valide a souvent une longueur multiple de 4 ou finit par =
+        if len(clean_text) > 4 and re.match(r'^[A-Za-z0-9+/]+={0,2}$', clean_text):
+            decoded_bytes = base64.b64decode(clean_text, validate=True)
+            decoded_str = decoded_bytes.decode('utf-8')
+            # Vérifier si le résultat est lisible (pas du binaire pur)
+            if decoded_str.isprintable():
+                return decoded_str
+    except (binascii.Error, UnicodeDecodeError, ValueError):
+        pass
+    return text
 
-        # ÉTAPE 3 : Data Leakage Prevention (DLP)
-        # Pas forcément bloqué, mais AVERTISSEMENT ou REDACT (Censure)
-        anonymized_prompt = prompt
-        alerts = []
-        
-        for label, pattern in self.sensitive_patterns.items():
-            matches = re.findall(pattern, prompt)
-            if matches:
-                alerts.append(label)
-                # Censure : remplaceR "bob@gmail.com" par "<EMAIL_REDACTED>"
-                anonymized_prompt = re.sub(pattern, f"<{label}_REDACTED>", anonymized_prompt)
+# --- 3. FONCTIONS PRINCIPALES (Appelées par main.py) ---
 
-        # RÉSULTAT FINAL
-        return {
-            "is_safe": True,
-            "action": "ALLOW" if not alerts else "ANONYMIZE",
-            "reason": f"Fuite de données prévenue: {', '.join(alerts)}" if alerts else "Clean",
-            "sanitized_input": anonymized_prompt
-        }
+def analyze_injection(text: str) -> tuple[bool, str]:
+    """
+    Vérifie si le texte contient une attaque.
+    Retourne : (is_attack: bool, details: str)
+    """
+    if not text:
+        return False, "Empty input"
+
+    # ÉTAPE A : Anti-Obfuscation ( décodage du Base64 caché)
+    decoded_text = _decode_base64(text)
+    
+    # Scanne du texte original et du texte décodé
+    targets_to_scan = [text]
+    if decoded_text != text:
+        targets_to_scan.append(decoded_text)
+
+    # ÉTAPE B : Scan des signatures
+    for target in targets_to_scan:
+        for pattern in INJECTION_PATTERNS:
+            if re.search(pattern, target, re.IGNORECASE):
+                # Si on trouve un motif interdit
+                return True, f"Injection detected: '{pattern}'"
+
+    return False, "Clean"
+
+def clean_pii(text: str) -> tuple[str, list]:
+    """
+    Anonymise les données sensibles.
+    Retourne : (texte_nettoyé: str, logs: list)
+    """
+    sanitized_text = text
+    logs = []
+
+    for label, pattern in PII_PATTERNS.items():
+        matches = re.findall(pattern, sanitized_text)
+        if matches:
+            count = len(matches)
+            logs.append(f"Found {count} {label}")
+            # Remplacement par <EMAIL_REDACTED>, <CREDIT_CARD_REDACTED>...
+            sanitized_text = re.sub(pattern, f"<{label}_REDACTED>", sanitized_text)
+    
+    return sanitized_text, logs
