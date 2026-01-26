@@ -1,24 +1,24 @@
-# 🛡️ LLM Secure Gateway (Enterprise Edition)
+#   LLM Secure Gateway (Enterprise Edition)
 
 ![Python](https://img.shields.io/badge/Python-3.13-blue?style=for-the-badge&logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-High_Performance-009688?style=for-the-badge&logo=fastapi&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![Security](https://img.shields.io/badge/Security-OWASP_LLM_Top_10-red?style=for-the-badge)
 
-## 📋 Overview
+##   Overview
 
 **LLM Secure Gateway** is a secure middleware proxy designed to sit between enterprise applications and Large Language Models (LLMs) such as GPT-4 or Claude.
 
 Addressing the critical risks identified by the **OWASP Top 10 for LLM** (Prompt Injection & Data Leakage), this gateway acts as an intelligent application firewall. It analyzes, sanitizes, and validates every request before it leaves the secure corporate network.
 
-### 🎯 Key Features
+###  Key Features
 * **Attack Protection:** actively blocks Jailbreak attempts and Prompt Injections.
 * **GDPR / DLP Compliance:** Automatically detects and redacts PII (Personally Identifiable Information) like Emails, Credit Cards, and API Keys.
 * **Defense in Depth:** Proactively decodes and inspects Base64 obfuscated payloads.
 
 ---
 
-## 📸 Proof of Concept
+##  Proof of Concept
 
 ### 1. API Interface (Swagger UI)
 The gateway provides a fully documented OpenAPI interface.
@@ -34,7 +34,7 @@ The gateway provides a fully documented OpenAPI interface.
 
 ---
 
-## 🏗️ Architecture
+##  Architecture
 
 The solution follows a micro-services architecture, fully containerized for cloud-native deployments.
 
@@ -55,7 +55,7 @@ Validation: Pydantic V2 for strict data typing.
 
 Infrastructure: Docker & Docker Compose for agnostic deployment.
 
-🚀 Installation & Deployment
+  Installation & Deployment
 Prerequisites
 Docker & Docker Compose installed.
 
@@ -77,7 +77,7 @@ Swagger UI (Interactive Docs): http://localhost:8000/docs
 
 Analysis Endpoint: http://localhost:8000/analyze
 
-🛡️ Security Features Details
+  Security Features Details
 1. Anti-Injection System (Prompt Injection)
 The engine rejects attempts to manipulate the AI's behavior or context.
 
@@ -142,7 +142,7 @@ JSON
 
 
 
-🚀 V2.0 UPDATE: Frontend UI & SOC DashboardThis project has been upgraded to a Full-Stack Solution. It now includes a user-friendly Chat Interface and a Security Operations Center (SOC) Dashboard.🌟 New Features in v2.0💬 Secure Chat UI: A modern interface (Streamlit) for employees to interact with the LLM.🧠 Real AI Integration: The backend is now connected to Meta Llama 3 via OpenRouter API.📊 SOC Dashboard: Real-time monitoring of blocked attacks, DLP censorship stats, and audit logs.🔐 RBAC: Role-Based Access Control (User vs Admin).🖥️ Frontend Installation (Streamlit)While the backend runs in Docker, the frontend runs locally on the host machine to simulate a client application.
+  V2.0 UPDATE: Frontend UI & SOC DashboardThis project has been upgraded to a Full-Stack Solution. It now includes a user-friendly Chat Interface and a Security Operations Center (SOC) Dashboard.🌟 New Features in v2.0💬 Secure Chat UI: A modern interface (Streamlit) for employees to interact with the LLM.🧠 Real AI Integration: The backend is now connected to Meta Llama 3 via OpenRouter API.📊 SOC Dashboard: Real-time monitoring of blocked attacks, DLP censorship stats, and audit logs.🔐 RBAC: Role-Based Access Control (User vs Admin).🖥️ Frontend Installation (Streamlit)While the backend runs in Docker, the frontend runs locally on the host machine to simulate a client application.
 
 1. Create the Virtual Environment
 
