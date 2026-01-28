@@ -1,0 +1,16 @@
+# Ignore les dossiers de configuration système
+.git
+.gitignore
+.env
+
+# Ignore les environnements virtuels (Ils font planter le lancement de vagrant)
+venv/
+.venv/
+__pycache__/
+
+# Ignore les logs (pour ne pas écraser ceux du conteneur)
+security_audit.log
+*.log
+
+# Ignore les fichiers temporaires
+.DS_Store

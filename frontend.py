@@ -2,8 +2,10 @@ import streamlit as st
 import requests
 import pandas as pd
 import time
+import re
+from datetime import datetime, timedelta
 
-# --- 1. CONFIGURATION (Première ligne obligatoire) ---
+# --- 1. CONFIGURATION ---
 st.set_page_config(
     page_title="Secure Gateway",
     page_icon="🛡️",
@@ -11,18 +13,11 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- 2. CSS : DESIGN PRO & ACCESSIBLE ---
+# --- 2. CSS ---
 st.markdown("""
 <style>
-    /* Cacher les éléments parasites de Streamlit */
     .stDeployButton {display:none;}
     footer {visibility: hidden;}
-    
-    /* Style "DLP Alert" - Norme WCAG (Accessibilité)
-       Fond: Ambre très clair (pas agressif)
-       Bordure: Orange Solaire (Visible)
-       Texte: Marron foncé (Contraste élevé pour la lecture)
-    */
     .dlp-alert {
         background-color: #fff7e6; 
         border-left: 5px solid #fa8c16;
@@ -32,18 +27,10 @@ st.markdown("""
         font-family: sans-serif;
         color: #7c2d12; 
     }
-    
-    .dlp-title {
-        font-weight: bold;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
 </style>
 """, unsafe_allow_html=True)
 
-# URL API
-API_URL = "http://localhost:8000/analyze"
+API_URL = "http://localhost:8080/analyze"
 
 # --- 3. SESSION STATE ---
 if "authenticated" not in st.session_state:
@@ -53,19 +40,16 @@ if "role" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# --- 4. PAGE DE LOGIN ---
+# --- 4. LOGIN ---
 def login_page():
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown("<br><br>", unsafe_allow_html=True)
         st.markdown("# 🔒 Portail Sécurisé")
-        st.markdown("Authentification requise pour accéder à la Gateway LLM.")
-        
         with st.form("login_form"):
             username = st.text_input("Identifiant")
             password = st.text_input("Mot de passe", type="password")
             submitted = st.form_submit_button("Connexion", use_container_width=True)
-            
             if submitted:
                 if username == "admin" and password == "admin123":
                     st.session_state.authenticated = True
@@ -77,25 +61,13 @@ def login_page():
                     st.rerun()
                 else:
                     st.error("Identifiants incorrects.")
-        
-        with st.expander("ℹ️ Comptes de démonstration"):
-            st.code("admin / admin123\nuser / user123")
 
-# --- 5. APPLICATION PRINCIPALE ---
+# --- 5. APP PRINCIPALE ---
 def main_app():
-    
-    # --- DÉFINITION DES ICÔNES (AVATARS) ---
-    # User: Silhouette neutre (Standard Pro)
-    # Assistant: Bouclier (Rappelle la fonction de sécurité)
-    AVATARS = {
-        "user": "👤",
-        "assistant": "🛡️"
-    }
+    AVATARS = {"user": "👤", "assistant": "🛡️"}
 
-    # --- A. SIDEBAR ---
     with st.sidebar:
         st.title("🎛️ Console")
-        
         if st.session_state.role == "admin":
             page = st.radio("Navigation", ["💬 Chat Sécurisé", "📊 Audit SOC"])
         else:
@@ -103,123 +75,112 @@ def main_app():
             st.info("Mode : Employé (Restreint)")
         
         st.markdown("---")
-        # Affichage du rôle avec icône
-        role_icon = "🔑" if st.session_state.role == "admin" else "💼"
-        st.write(f"{role_icon} Connecté en : **{st.session_state.role.upper()}**")
-        
-        if st.button("Déconnexion", type="secondary"):
+        st.write(f"Connecté en : **{st.session_state.role.upper()}**")
+        if st.button("Déconnexion"):
             st.session_state.authenticated = False
-            st.session_state.messages = []
             st.rerun()
 
-    # --- B. PAGE CHAT ---
+    # --- CHAT ---
     if page == "💬 Chat Sécurisé":
         st.subheader("💬 Assistant IA d'Entreprise")
-        st.caption("Flux protégé par Secure Gateway v3.0")
-
-        # 1. Historique des messages
+        
         for msg in st.session_state.messages:
-            role = msg["role"]
-            with st.chat_message(role, avatar=AVATARS.get(role)):
+            with st.chat_message(msg["role"], avatar=AVATARS.get(msg["role"])):
                 if msg.get("is_html"):
                     st.markdown(msg["content"], unsafe_allow_html=True)
                 else:
                     st.markdown(msg["content"])
 
-        # 2. Input (En bas)
-        if prompt := st.chat_input("Posez votre question de manière sécurisée..."):
-            
-            # Affichage User
+        if prompt := st.chat_input("Votre message..."):
             with st.chat_message("user", avatar=AVATARS["user"]):
                 st.markdown(prompt)
             st.session_state.messages.append({"role": "user", "content": prompt, "is_html": False})
 
-            # Appel API
             try:
                 response = requests.post(API_URL, json={"user_input": prompt})
-                
                 if response.status_code == 200:
                     data = response.json()
-                    sanitized = data["sanitized_input"]
-                    llm_reply = data["llm_reply"]["answer"]
-                    
-                    # CENSURE (DLP)
                     if data["original_censored"]:
-                        # HTML Pro & Accessible (Ambre/Orange)
-                        alert_html = f"""
-                        <div class="dlp-alert">
-                            <div class="dlp-title">⚠️ FILTRE DLP ACTIVÉ</div>
-                            Données sensibles détectées et masquées.<br>
-                            <small><b>Prompt nettoyé envoyé au LLM :</b> <i>{sanitized}</i></small>
-                        </div>
-                        """
+                        alert = f"<div class='dlp-alert'><b>⚠️ DLP ACTIVÉ</b><br>Prompt nettoyé : <i>{data['sanitized_input']}</i></div>"
                         with st.chat_message("assistant", avatar=AVATARS["assistant"]):
-                            st.markdown(alert_html, unsafe_allow_html=True)
-                            st.markdown(llm_reply)
-                        
-                        st.session_state.messages.append({"role": "assistant", "content": alert_html, "is_html": True})
-                        st.session_state.messages.append({"role": "assistant", "content": llm_reply, "is_html": False})
-                    
-                    # PAS DE CENSURE
+                            st.markdown(alert, unsafe_allow_html=True)
+                            st.markdown(data["llm_reply"]["answer"])
+                        st.session_state.messages.append({"role": "assistant", "content": alert, "is_html": True})
+                        st.session_state.messages.append({"role": "assistant", "content": data["llm_reply"]["answer"], "is_html": False})
                     else:
                         with st.chat_message("assistant", avatar=AVATARS["assistant"]):
-                            st.markdown(llm_reply)
-                        st.session_state.messages.append({"role": "assistant", "content": llm_reply, "is_html": False})
-
-                # BLOCAGE (INJECTION)
+                            st.markdown(data["llm_reply"]["answer"])
+                        st.session_state.messages.append({"role": "assistant", "content": data["llm_reply"]["answer"], "is_html": False})
                 elif response.status_code == 403:
-                    error_msg = "⛔ **ACTION BLOQUÉE** : Tentative de manipulation du modèle détectée (Prompt Injection)."
+                    err = "⛔ **ACTION BLOQUÉE** : Tentative d'injection détectée."
                     with st.chat_message("assistant", avatar=AVATARS["assistant"]):
-                        st.error(error_msg)
-                    st.session_state.messages.append({"role": "assistant", "content": error_msg, "is_html": False})
-
+                        st.error(err)
+                    st.session_state.messages.append({"role": "assistant", "content": err, "is_html": False})
             except Exception as e:
-                st.error(f"Erreur technique passerelle : {e}")
+                st.error(f"Erreur connexion : {e}")
 
-    # --- C. PAGE DASHBOARD ---
+    # --- DASHBOARD (PARSER) ---
     elif page == "📊 Audit SOC":
         st.subheader("📊 Security Operations Center (SOC)")
-        
-        col_btn, col_txt = st.columns([1, 5])
-        with col_btn:
-            if st.button("🔄 Actualiser"):
-                st.rerun()
+        if st.button("🔄 Actualiser"): st.rerun()
         
         try:
             logs = []
             with open("security_audit.log", "r") as f:
                 for line in f.readlines():
-                    parts = line.split(" - ")
-                    if len(parts) >= 3:
-                        logs.append({"Heure": parts[0], "Niveau": parts[1], "Message": parts[2].strip()})
+                    line = line.strip()
+                    if not line: continue
+
+                    # 1. Recherche de la  date
+                    match_date = re.search(r'(\d{4}-\d{2}-\d{2})', line)
+                    if not match_date: continue
+                    
+                    start_idx = match_date.start()
+                    
+                    # --- Retouche sur l'HEURE ---
+                    raw_ts = line[start_idx : start_idx + 19]
+                    try:
+                        # convertir le texte en date, on ajoute 1h, on remet en texte
+                        dt_obj = datetime.strptime(raw_ts, "%Y-%m-%d %H:%M:%S")
+                        dt_obj = dt_obj + timedelta(hours=1)
+                        timestamp_part = dt_obj.strftime("%Y-%m-%d %H:%M:%S")
+                    except:
+                        timestamp_part = raw_ts # Si ça rate, on garde l'originale
+                    
+                    rest_of_line = line[start_idx + 19 :]
+                    
+                    niveau = "INFO"
+                    raw_message = rest_of_line
+
+                    # 2. Détection du niveau
+                    if "WARNING" in rest_of_line:
+                        niveau = "WARNING"
+                        parts = rest_of_line.split("WARNING", 1)
+                        if len(parts) > 1: raw_message = parts[1]
+                    elif "INFO" in rest_of_line:
+                        niveau = "INFO"
+                        parts = rest_of_line.split("INFO", 1)
+                        if len(parts) > 1: raw_message = parts[1]
+                    
+                    # 3. Nettoyage
+                    clean_msg = re.sub(r'^[\s\t\-"|,]+', '', raw_message).strip()
+                    
+                    logs.append({"Heure": timestamp_part, "Niveau": niveau, "Message": clean_msg})
             
             if logs:
                 df = pd.DataFrame(logs)
-                
-                # KPIs avec Icônes claires
                 k1, k2, k3 = st.columns(3)
-                
-                # Total
                 k1.metric("Flux Total", len(df))
+                k2.metric("Menaces Bloquées 🛡️", len(df[df['Message'].str.contains("ATTACK|BLOCKED|Injection", case=False)]), delta_color="inverse")
+                k3.metric("Fuites Censurées 🧩", len(df[df['Message'].str.contains("REDACTED|SANITIZED", case=False)]), delta_color="normal")
                 
-                # Attaques (Rouge/Inverse)
-                attacks = len(df[df['Message'].str.contains("ATTACK BLOCKED")])
-                k2.metric("Menaces Bloquées 🛡️", attacks, delta_color="inverse")
-                
-                # Fuites (Normal/Neutre)
-                pii = len(df[df['Message'].str.contains("PII REDACTED")])
-                k3.metric("Fuites Censurées 🧩", pii, delta_color="normal")
-                
-                st.divider()
-                st.markdown("### 📜 Journal d'Audit")
                 st.dataframe(df.iloc[::-1], use_container_width=True)
             else:
-                st.info("Aucune donnée d'audit disponible.")
-                
-        except FileNotFoundError:
-            st.warning("Logs introuvables. Vérifiez le volume Docker.")
+                st.info("Aucun log lisible trouvé.")
 
-# --- LANCEMENT ---
+        except FileNotFoundError:
+            st.warning("Fichier log introuvable.")
+
 if not st.session_state.authenticated:
     login_page()
 else:
